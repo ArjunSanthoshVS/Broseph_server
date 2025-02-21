@@ -14,7 +14,6 @@ router.post('/send-otp', validatePhone, authController.sendOtp);
 // Verify OTP
 router.post('/verify-otp', validateOtp, authController.verifyOtp);
 
-// Protected routes
 // Get current user
 router.get('/me', auth, authController.getCurrentUser);
 

@@ -1,7 +1,8 @@
 const { verifyToken } = require('../../utils/auth');
-const User = require('../../models/user');
+const Admin = require('../../models/admin');
 
-const auth = async (req, res, next) => {
+// Protect routes middleware
+const adminAuth = async (req, res, next) => {
   try {
     // Get token from header
     const token = req.header('Authorization')?.replace('Bearer ', '');
@@ -9,29 +10,25 @@ const auth = async (req, res, next) => {
     if (!token) {
       return res.status(401).json({ error: 'No token, authorization denied' });
     }
-
-    if (token === 'Anonymous') {
-      return next();
-    }
-
     // Verify token
     const decoded = verifyToken(token);
     if (!decoded) {
       return res.status(401).json({ error: 'Token is not valid' });
     }
 
-    if (decoded.userId) {
-      const user = await User.findById(decoded.userId);
-      if (!user) {
+    if (decoded.adminId) {
+      // Get admin from token
+      const admin = await Admin.findById(decoded.adminId);
+
+      if (!admin) {
         return res.status(401).json({ error: 'User not found' });
       }
-      req.user = user;
-    } else if (decoded.anonymousId) {
-      // Token is for an anonymous report
-      req.anonymous = { anonymousId: decoded.anonymousId };
+
+      req.admin = admin;
     } else {
       return res.status(401).json({ error: 'Token payload missing required info' });
     }
+
     next();
   } catch (error) {
     console.error('Auth middleware error:', error);
@@ -39,4 +36,4 @@ const auth = async (req, res, next) => {
   }
 };
 
-module.exports = auth; 
+module.exports = adminAuth;

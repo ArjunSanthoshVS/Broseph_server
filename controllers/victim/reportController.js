@@ -15,7 +15,6 @@ function generateAnonymousId() {
 exports.createReport = async (req, res, next) => {
   try {
     const reportData = req.body;
-    console.log(reportData, 'reportData in controller');
 
     let anonymousToken = null;
     if (!reportData.userId) {
@@ -24,12 +23,11 @@ exports.createReport = async (req, res, next) => {
       anonymousToken = jwt.sign({ anonymousId: reportData.anonymousId }, process.env.JWT_SECRET, { expiresIn: '1y' });
     }
     reportData.reportCode = generateReportCode();
-    console.log(reportData, 'reportData');
 
     const newReport = await Report.create(reportData);
     res.status(201).json({ report: newReport, anonymousToken });
   } catch (err) {
-    next(err);
+    return res.status(500).json({ error: err.message });
   }
 };
 
@@ -48,13 +46,11 @@ exports.getReports = async (req, res, next) => {
       return;
     }
 
-    console.log(filter, 'filter');
     const reports = await Report.find(filter);
-    console.log(reports, 'reports');
 
     res.json({ reports });
   } catch (err) {
-    next(err);
+    return res.status(500).json({ error: err.message });
   }
 };
 
@@ -68,7 +64,7 @@ exports.getAnonymousReports = async (req, res, next) => {
     const anonymousToken = jwt.sign({ anonymousId: req.params.anonymousId }, process.env.JWT_SECRET, { expiresIn: '1y' });
     res.json({ reports, anonymousToken });
   } catch (err) {
-    next(err);
+    return res.status(500).json({ error: err.message });
   }
 };
 
@@ -81,17 +77,16 @@ exports.getReportById = async (req, res, next) => {
     }
     res.json(report);
   } catch (err) {
-    next(err);
+    return res.status(500).json({ error: err.message });
   }
 };
 
 // Update a specific report by ID
 exports.updateReport = async (req, res, next) => {
   try {
-    console.log(req.body, 'req.body');
     const report = await Report.findByIdAndUpdate(req.params.id, req.body, { new: true });
     res.json(report);
   } catch (err) {
-    next(err);
+    return res.status(500).json({ error: err.message });
   }
 }; 
