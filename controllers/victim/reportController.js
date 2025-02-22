@@ -1,5 +1,26 @@
 const Report = require('../../models/report');
 const jwt = require('jsonwebtoken');
+const fs = require('fs');
+const path = require('path');
+const multer = require('multer');
+
+// Configure multer for voice uploads
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    const dir = 'public/uploads/voice';
+    // Create directory if it doesn't exist
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    cb(null, dir);
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, 'voice-' + uniqueSuffix + '.webm');
+  }
+});
+
+const upload = multer({ storage: storage });
 
 // Added helper function to generate report code
 function generateReportCode() {
@@ -12,24 +33,39 @@ function generateAnonymousId() {
 }
 
 // Create a new report
-exports.createReport = async (req, res, next) => {
-  try {
-    const reportData = req.body;
+exports.createReport = [
+  upload.single('locationAudio'),
+  async (req, res, next) => {
+    try {
+      // Parse the JSON data from the form
+      const reportData = JSON.parse(req.body.data);
 
-    let anonymousToken = null;
-    if (!reportData.userId) {
-      reportData.reporter = 'anonymous';
-      reportData.anonymousId = generateAnonymousId();
-      anonymousToken = jwt.sign({ anonymousId: reportData.anonymousId }, process.env.JWT_SECRET, { expiresIn: '1y' });
+      // Add voice recording path if uploaded
+      if (req.file) {
+        reportData.locationAudioPath = `/uploads/voice/${req.file.filename}`;
+      }
+
+      let anonymousToken = null;
+      if (!reportData.userId) {
+        reportData.reporter = 'anonymous';
+        reportData.anonymousId = generateAnonymousId();
+        anonymousToken = jwt.sign({ anonymousId: reportData.anonymousId }, process.env.JWT_SECRET, { expiresIn: '1y' });
+      }
+      reportData.reportCode = generateReportCode();
+
+      const newReport = await Report.create(reportData);
+      res.status(201).json({ report: newReport, anonymousToken });
+    } catch (err) {
+      // Clean up uploaded file if there's an error
+      if (req.file) {
+        fs.unlink(req.file.path, (unlinkErr) => {
+          if (unlinkErr) console.error('Error deleting file:', unlinkErr);
+        });
+      }
+      return res.status(500).json({ error: err.message });
     }
-    reportData.reportCode = generateReportCode();
-
-    const newReport = await Report.create(reportData);
-    res.status(201).json({ report: newReport, anonymousToken });
-  } catch (err) {
-    return res.status(500).json({ error: err.message });
   }
-};
+];
 
 // List reports, optionally filter by reporter via query parameter
 exports.getReports = async (req, res, next) => {

@@ -9,6 +9,7 @@ const reportSchema = new Schema({
   isUrgent: { type: Boolean, default: false },
   locationType: { type: String },
   location: { type: String },
+  locationAudioPath: { type: String },
   hasWitnesses: { type: Boolean, default: false },
   witnessDetails: { type: String },
   hasEvidence: { type: Boolean, default: false },

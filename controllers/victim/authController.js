@@ -49,22 +49,10 @@ exports.register = async (req, res) => {
 
     await user.save();
 
-    // Create a chat room for the registered victim
-    const chatRoom = new ChatRoom({
-      roomId: user._id.toString(), // Using user ID as room ID
-      victimType: 'registered',
-      victimId: user._id,
-      victimRef: user._id,
-      adminId: process.env.DEFAULT_ADMIN_ID, // You should handle this appropriately
-    });
-
-    await chatRoom.save();
-
     // In a real application, you would send the OTP via SMS here
     res.status(201).json({
       message: 'Registration successful. Please verify your phone number.',
       otp, // Remove in production
-      roomId: chatRoom.roomId
     });
 
   } catch (error) {
