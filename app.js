@@ -53,6 +53,10 @@ app.use('/api/admin/cases', adminCasesRouter);
 app.use('/api/admin/chat', adminChatRouter);
 app.use('/api/admin', adminAuthRouter);
 
+app.get("/", (req, res) => {
+  res.send("Server is running!");
+});
+
 // catch 404 and forward to error handler
 app.use(function (req, res, next) {
   next(createError(404));

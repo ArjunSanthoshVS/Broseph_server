@@ -7,7 +7,7 @@ module.exports = {
     init: (server) => {
         io = socketIo(server, {
             cors: {
-                origin: process.env.FRONTEND_URL || "http://localhost:5173",
+                origin: ["http://localhost:5173", "https://broseph-client.netlify.app"],
                 methods: ["GET", "POST"]
             }
         });
