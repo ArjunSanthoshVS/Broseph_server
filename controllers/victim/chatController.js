@@ -1,4 +1,5 @@
 const ChatRoom = require('../../models/chatRoom');
+const Report = require('../../models/report');
 const path = require('path');
 const fs = require('fs').promises;
 
@@ -44,13 +45,11 @@ exports.getMessages = async (req, res) => {
         const { roomId } = req.params;
         const userId = req.user?._id || req.anonymousId;
 
-        const chatRoom = await ChatRoom.findOne({
-            roomId,
-            $or: [
-                { victimId: userId },
-                { victimRef: userId }
-            ]
-        });
+        console.log('roomId', roomId);
+        console.log('userId', userId);
+
+        // Then get the chat room using the ObjectId
+        const chatRoom = await ChatRoom.findOne({ roomId });
 
         if (!chatRoom) {
             return res.status(404).json({ error: 'Chat room not found' });
@@ -82,13 +81,8 @@ exports.sendMessage = async (req, res) => {
         const { content, messageType = 'text' } = req.body;
         const userId = req.user?._id || req.anonymousId;
 
-        const chatRoom = await ChatRoom.findOne({
-            roomId,
-            $or: [
-                { victimId: userId },
-                { victimRef: userId }
-            ]
-        });
+        // Then get the chat room using the ObjectId
+        const chatRoom = await ChatRoom.findOne({ roomId });
 
         if (!chatRoom) {
             return res.status(404).json({ error: 'Chat room not found' });
@@ -134,13 +128,21 @@ exports.uploadFile = async (req, res) => {
             return res.status(400).json({ error: 'No file provided' });
         }
 
-        const chatRoom = await ChatRoom.findOne({
-            roomId,
+        // First try to find the report with this chat room
+        const report = await Report.findOne({
+            chatRoomId: roomId,
             $or: [
                 { victimId: userId },
                 { victimRef: userId }
             ]
         });
+
+        if (!report) {
+            return res.status(404).json({ error: 'Report not found' });
+        }
+
+        // Then get the chat room using the ObjectId
+        const chatRoom = await ChatRoom.findById(roomId);
 
         if (!chatRoom) {
             return res.status(404).json({ error: 'Chat room not found' });
@@ -197,5 +199,30 @@ exports.uploadFile = async (req, res) => {
         }
         console.error('File upload error:', error);
         res.status(500).json({ error: 'Failed to upload file' });
+    }
+};
+
+// Get a report by chat room ID
+exports.getReportByChatRoom = async (req, res, next) => {
+    try {
+        const { chatRoomId } = req.params;
+        const userId = req.user?._id;
+        const anonymousId = req.anonymous?.anonymousId;
+
+        const report = await Report.findOne({
+            chatRoomId,
+            $or: [
+                { userId },
+                { anonymousId }
+            ]
+        }).populate('assignedTo', 'name department');
+
+        if (!report) {
+            return res.status(404).json({ error: 'Report not found' });
+        }
+
+        res.json({ report });
+    } catch (err) {
+        return res.status(500).json({ error: err.message });
     }
 }; 

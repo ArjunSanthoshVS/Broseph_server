@@ -26,50 +26,19 @@ exports.getCurrentUser = async (req, res) => {
   }
 };
 
-// Register user and send OTP
-exports.register = async (req, res) => {
-  try {
-    const { name, phone } = req.body;
-
-    // Check if user already exists
-    let user = await User.findOne({ phone });
-    if (user) {
-      return res.status(400).json({ error: 'Phone number already registered' });
-    }
-
-    // Create new user
-    user = new User({ name, phone });
-    
-    // Generate OTP
-    const otp = 123456; // For demo purposes
-    user.otp = {
-      code: otp,
-      expiresAt: generateOTPExpiry()
-    };
-
-    await user.save();
-
-    // In a real application, you would send the OTP via SMS here
-    res.status(201).json({
-      message: 'Registration successful. Please verify your phone number.',
-      otp, // Remove in production
-    });
-
-  } catch (error) {
-    console.error('Registration error:', error);
-    res.status(500).json({ error: 'Failed to register user' });
-  }
-};
-
-// Send OTP for login
+// Send OTP (handles both registration and login)
 exports.sendOtp = async (req, res) => {
   try {
     const { phone } = req.body;
 
-    // Find user
-    const user = await User.findOne({ phone });
+    // Find or create user
+    let user = await User.findOne({ phone });
+    let isNewUser = false;
+
     if (!user) {
-      return res.status(404).json({ error: 'User not found. Please register first.' });
+      // Create new user if not found
+      user = new User({ phone });
+      isNewUser = true;
     }
 
     // Generate new OTP
@@ -81,8 +50,10 @@ exports.sendOtp = async (req, res) => {
 
     await user.save();
 
+    // In a real application, you would send the OTP via SMS here
     res.json({
-      message: 'OTP sent successfully',
+      message: isNewUser ? 'New user created. Please verify your phone number.' : 'OTP sent successfully',
+      isNewUser,
       otp // Remove in production
     });
 
@@ -125,7 +96,9 @@ exports.verifyOtp = async (req, res) => {
         id: user._id,
         name: user.name,
         phone: user.phone,
-        isVerified: user.isVerified
+        isVerified: user.isVerified,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt
       }
     });
 

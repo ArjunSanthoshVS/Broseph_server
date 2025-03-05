@@ -2,6 +2,7 @@ const ChatRoom = require('../../models/chatRoom');
 const User = require('../../models/user');
 const path = require('path');
 const fs = require('fs').promises;
+const Report = require('../../models/report');
 
 // Get all victims with their last messages
 exports.getVictims = async (req, res) => {
@@ -19,13 +20,29 @@ exports.getVictims = async (req, res) => {
         msg => msg.senderType === 'Victim' && !msg.readBy?.includes(req.admin._id)
       ).length;
 
+      // Get associated report details
+      const report = await Report.findOne({ chatRoomId: room.roomId })
+        .populate('assignedTo', 'name department');
+
       return {
         id: room.roomId,
         name: room.victimType === 'registered' ? room.victimRef.name : room.victimId,
         type: room.victimType,
         lastMessage: lastMessage?.content,
         lastMessageTime: lastMessage?.timestamp,
-        unreadCount
+        unreadCount,
+        // Add case details
+        reportCode: report?.reportCode,
+        category: report?.category,
+        subcategory: report?.subcategory,
+        status: report?.status,
+        priority: report?.priority,
+        isUrgent: report?.isUrgent,
+        createdAt: report?.createdAt,
+        assignedTo: report?.assignedTo ? {
+          name: report.assignedTo.name,
+          department: report.assignedTo.department
+        } : undefined
       };
     }));
 

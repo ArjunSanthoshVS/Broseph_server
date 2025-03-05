@@ -16,4 +16,7 @@ router.post('/:roomId/messages', auth, chatController.sendMessage);
 // Upload file or voice message
 router.post('/:roomId/upload', auth, upload.single('file'), chatController.uploadFile);
 
+// Get report details by chat room ID
+router.get('/report/:chatRoomId', auth, chatController.getReportByChatRoom);
+
 module.exports = router;

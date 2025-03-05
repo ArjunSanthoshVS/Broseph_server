@@ -1,14 +1,11 @@
 const express = require('express');
 const router = express.Router();
 const authController = require('../../controllers/victim/authController');
-const { validateRegistration, validatePhone, validateOtp } = require('../../middleware/victim/validateRequest');
+const { validatePhone, validateOtp } = require('../../middleware/victim/validateRequest');
 const auth = require('../../middleware/victim/auth');
 
 // Public routes
-// Register new user
-router.post('/register', validateRegistration, authController.register);
-
-// Send OTP (for login)
+// Send OTP (handles both registration and login)
 router.post('/send-otp', validatePhone, authController.sendOtp);
 
 // Verify OTP

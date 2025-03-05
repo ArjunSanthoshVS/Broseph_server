@@ -3,32 +3,33 @@ const { Schema } = mongoose;
 
 const reportSchema = new Schema({
   category: { type: String, required: true },
-  subcategory: { type: String, required: true },
-  description: { type: String, required: true },
-  date: { type: Date, required: true },
+  details: { type: String, required: true },
   isUrgent: { type: Boolean, default: false },
-  locationType: { type: String },
-  location: { type: String },
+  location: {
+    lat: { type: Number },
+    lng: { type: Number },
+    address: { type: String }
+  },
+  contactInfo: {
+    name: { type: String },
+    mobile: { type: String },
+    age: { type: String }
+  },
   locationAudioPath: { type: String },
-  hasWitnesses: { type: Boolean, default: false },
-  witnessDetails: { type: String },
-  hasEvidence: { type: Boolean, default: false },
-  evidenceFiles: { type: [String], default: [] },
-  contactName: { type: String },
-  contactPhone: { type: String },
-  reporter: { type: String, required: true },
+  reporter: { type: String, default: 'anonymous' },
   userId: { type: Schema.Types.ObjectId, ref: 'User' },
   anonymousId: { type: String },
   reportCode: { type: String },
-  status: { 
-    type: String, 
+  chatRoomId: { type: String },
+  status: {
+    type: String,
     enum: ['submitted', 'open', 'in-progress', 'pending', 'resolved', 'closed'],
-    default: 'submitted' 
+    default: 'submitted'
   },
-  priority: { 
-    type: String, 
+  priority: {
+    type: String,
     enum: ['low', 'medium', 'high', 'urgent'],
-    default: 'medium' 
+    default: 'medium'
   },
   assignedTo: {
     type: Schema.Types.ObjectId,
@@ -79,7 +80,7 @@ const reportSchema = new Schema({
 }, { timestamps: true });
 
 // Update lastUpdated timestamp before saving
-reportSchema.pre('save', function(next) {
+reportSchema.pre('save', function (next) {
   this.lastUpdated = Date.now();
   next();
 });

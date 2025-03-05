@@ -4,7 +4,7 @@ const reportController = require('../../controllers/victim/reportController');
 const auth = require('../../middleware/victim/auth');
 
 // POST /victim/report - Create a new report
-router.post('/',  reportController.createReport);
+router.post('/', auth, reportController.createReport);
 
 // GET /victim/report - List all reports (optionally filter by reporter)
 router.get('/', auth, reportController.getReports);

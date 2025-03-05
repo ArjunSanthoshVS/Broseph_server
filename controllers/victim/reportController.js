@@ -1,4 +1,6 @@
 const Report = require('../../models/report');
+const Admin = require('../../models/admin');
+const ChatRoom = require('../../models/chatRoom');
 const jwt = require('jsonwebtoken');
 const fs = require('fs');
 const path = require('path');
@@ -24,12 +26,31 @@ const upload = multer({ storage: storage });
 
 // Added helper function to generate report code
 function generateReportCode() {
-  return 'REPORT' + Math.floor(100 + Math.random() * 900);
+  return 'TICKET' + Math.floor(100 + Math.random() * 900);
 }
 
 // Added helper function to generate anonymous id
 function generateAnonymousId() {
   return 'ANONYMOUS' + Math.floor(100 + Math.random() * 900);
+}
+
+// Helper function to get an available admin
+async function getAvailableAdmin() {
+  try {
+    // Get an active admin with the least number of active chat rooms
+    const admin = await Admin.findOne({ status: 'active' })
+      .sort({ lastLogin: -1 }) // Prioritize recently active admins
+      .exec();
+
+    if (!admin) {
+      throw new Error('No active admin available');
+    }
+
+    return admin;
+  } catch (error) {
+    console.error('Error getting available admin:', error);
+    throw error;
+  }
 }
 
 // Create a new report
@@ -46,7 +67,7 @@ exports.createReport = [
       }
 
       let anonymousToken = null;
-      if (!reportData.userId) {
+      if (!req.user._id) {
         reportData.reporter = 'anonymous';
         reportData.anonymousId = generateAnonymousId();
         anonymousToken = jwt.sign({ anonymousId: reportData.anonymousId }, process.env.JWT_SECRET, { expiresIn: '1y' });
@@ -54,7 +75,40 @@ exports.createReport = [
       reportData.reportCode = generateReportCode();
 
       const newReport = await Report.create(reportData);
-      res.status(201).json({ report: newReport, anonymousToken });
+
+      // Create a chat room for the report
+      try {
+        const admin = await getAvailableAdmin();
+
+        const chatRoomData = {
+          roomId: `report-${newReport._id}`,
+          victimType: 'registered',
+          victimId: req.user._id,
+          victimRef: req.user._id,
+          adminId: admin._id,
+          messages: []
+        };
+        newReport.userId = req.user._id;
+        const chatRoom = await ChatRoom.create(chatRoomData);
+
+        // Add chatRoomId to the report
+        newReport.chatRoomId = chatRoom.roomId;
+        await newReport.save();
+
+        res.status(201).json({
+          ticket: newReport,
+          anonymousToken,
+          chatRoom: chatRoom
+        });
+      } catch (chatError) {
+        console.error('Error creating chat room:', chatError);
+        // Still return the report even if chat room creation fails
+        res.status(201).json({
+          ticket: newReport,
+          anonymousToken,
+          error: 'Chat room creation failed'
+        });
+      }
     } catch (err) {
       // Clean up uploaded file if there's an error
       if (req.file) {
@@ -81,7 +135,7 @@ exports.getReports = async (req, res, next) => {
       res.json([]);
       return;
     }
-
+    console.log(filter);
     const reports = await Report.find(filter);
 
     res.json({ reports });
@@ -125,4 +179,4 @@ exports.updateReport = async (req, res, next) => {
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
-}; 
+};
